@@ -207,8 +207,70 @@ class ViewControllerViewModelImplTests: XCTestCase {
         XCTAssertEqual(actual.path, "/v2/everything")
     }
 
+    func test_get_shouldNotComplete_ifSelfHasAlreadyBeenDeallocated() {
+        // GIVEN
+        let client = HTTPClientSpy()
+        var sut: ViewControllerViewModel? = ViewControllerViewModelImpl(
+            client: client,
+            fromDateVendor: Date.init,
+            apiKey: anyString(),
+            inputQuery: anyString()
+        )
+
+        // WHEN
+        var captureCount = 0
+        sut?.requestNews { _ in captureCount += 1 }
+        sut = nil
+        client.completeWithResponse(error: anyError())
 
 
+        // THEN
+
+        XCTAssertEqual(captureCount, 0)
+    }
+
+
+    func test_clientComplete_withResponsesExpectedToNotComplete_shouldNotComplete() {
+        // GIVEN
+        let (sut, spy) = makeSUT()
+        var capturedResult: [Result<NewsRoot, Error>] = []
+        sut.requestNews { capturedResult.append($0) }
+
+        let expectedToNotComplete: [(Data?, URLResponse?, Error?)] = [
+            (nil, nil, nil),
+            (anyUndecodableData(), anySuccessfulHTTPURLResponse(), nil),
+            (anyData(), nil, nil),
+            (anyData(), anyResponse(), nil),
+            (anyUndecodableData(), anyInvalidHTTPURLResponse(), nil),
+        ]
+
+
+        // WHEN
+
+        expectedToNotComplete.forEach {
+            spy.completeWithResponse(data: $0.0, response: $0.1, error: $0.2)
+        }
+
+        // THEN
+        XCTAssertTrue(capturedResult.isEmpty)
+    }
+
+    func anyHTTPURLResponse(withStatusCode statusCode: Int) -> URLResponse {
+        HTTPURLResponse(url: anyURL(), statusCode: statusCode, httpVersion: nil, headerFields: nil)!
+    }
+
+    func anySuccessfulHTTPURLResponse() -> URLResponse {
+        anyHTTPURLResponse(withStatusCode: 201)
+    }
+
+    func anyInvalidHTTPURLResponse() -> URLResponse {
+        anyHTTPURLResponse(withStatusCode: 300)
+    }
+
+
+    private func anyUndecodableData() -> Data {
+        Data(anyString().utf8)
+    }
 
     private func XCTAssert<T>(
         _ items: [T],
@@ -222,42 +284,6 @@ class ViewControllerViewModelImplTests: XCTestCase {
             file: file,
             line: line)
     }
-
-
-
-//    func test_requestNews_duringJanuary_shouldGetWithProperURL() {
-//        // GIVEN
-//
-//        let apiKey = anyString()
-//        let inputDate = Date(timeIntervalSince1970: 90000) // 1970-01-02 01:00:00 +0000
-//        let currentCalendar = Calendar.current
-//
-//        let expectedYear = currentCalendar.component(.year, from: inputDate)
-//        let expectedDay = currentCalendar.component(.day, from: inputDate)
-//        let expectedMonth = currentCalendar.component(.month, from: inputDate)
-//
-//
-//        let expectedRequest: URLRequest = {
-//            let expectedURL = URL(string: "https://newsapi.org/v2/everything?q=tesla&from=\(expectedYear)-\(expectedMonth - 1)-\(expectedDay)&apiKey=\(apiKey)")!
-//
-//
-//            let request = URLRequest(url: expectedURL)
-//            return request
-//        }()
-//
-//        let (sut, spy) = makeSUT(fromDateVendor: { inputDate }, apiKey: apiKey)
-//
-//
-//
-//        // WHEN
-//        sut.requestNews { _ in }
-//
-//
-//        // THEN
-//        XCTAssertEqual(spy.calledGet, [
-//            .init(request: expectedRequest) { _ in }
-//        ])
-//    }
 
 
     private func anyInt() -> Int {
@@ -277,15 +303,6 @@ class ViewControllerViewModelImplTests: XCTestCase {
             textEncodingName: anyString()
         )
     }
-
-    private func anyResponse() -> URLResponse {
-        .init(
-            url: anyURL(),
-            mimeType: nil,
-            expectedContentLength: 0,
-            textEncodingName: nil)
-    }
-
 
     private func makeSUT(
         fromDateVendor: @escaping ViewControllerViewModelImpl.DateVendor = Date.init,
@@ -350,11 +367,6 @@ final class HTTPClientSpy: HTTPClient {
     }
 
 }
-
-private func anyError() -> Error {
-    NSError(domain: "nfjesnejks", code: 19, userInfo: nil)
-}
-
 func expectedNewsRoot() -> NewsRoot {
     .init(
         status: "ok",

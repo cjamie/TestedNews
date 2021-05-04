@@ -137,8 +137,7 @@ protocol ViewControllerViewModel {
 
 // will be responsible for mapping client responses to our result type
 
-struct ViewControllerViewModelImpl: ViewControllerViewModel {
-
+final class ViewControllerViewModelImpl: ViewControllerViewModel {
     typealias DateVendor = () -> Date
 
     private let client: HTTPClient
@@ -159,51 +158,80 @@ struct ViewControllerViewModelImpl: ViewControllerViewModel {
     }
 
     func requestNews(completion: @escaping NewsRootCompletion) {
-        let fromDate = fromDateVendor()
+        guard let derivedURL = TeslaNewsURLDeriver.url(
+            fromDate: fromDateVendor(),
+            inputQuery: inputQuery,
+            apiKey: apiKey
+        ) else { return }
 
+        client.get(from: URLRequest(url: derivedURL)) { [weak self] data, response, error in
+
+            guard self != nil else { return }
+
+            if let result: Result<NewsRoot, Error> = HttpResponseMapper.mapResult(data: data, response: response, error: error) {
+                completion(result)
+            }
+        }
+    }
+}
+
+
+private enum HttpResponseMapper {
+    static func mapResult<T: Decodable>(
+        data: Data?,
+        response: URLResponse?,
+        error: Error?
+    )-> Result<T, Error>? {
+
+        if let error = error {
+            return .failure(error)
+        }
+
+        if let data = data,
+           let response = response as? HTTPURLResponse,
+           (200..<299).contains(response.statusCode),
+           let decodedObject = try? JSONDecoder().decode(T.self, from: data) {
+            return .success(decodedObject)
+        }
+
+        
+        return nil
+    }
+
+}
+
+
+private enum TeslaNewsURLDeriver {
+    static func url(
+        fromDate: Date,
+        inputQuery: String,
+        apiKey: String
+    )-> URL? {
         let calendar = Calendar.current
 
-        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: fromDate) else { return }
+        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: fromDate) else { return nil }
 
         let month = calendar.component(.month, from: oneMonthAgo)
         let day = calendar.component(.day, from: oneMonthAgo)
         let year = calendar.component(.year, from: oneMonthAgo)
 
-        let url: URL = {
-            let components = NSURLComponents()
+        let components = NSURLComponents()
 
-            components.host = "newsapi.org"
-            components.scheme = "https"
-            components.path = "/v2/everything"
+        components.host = "newsapi.org"
+        components.scheme = "https"
+        components.path = "/v2/everything"
 
+        components.queryItems = [
+            "q": inputQuery,
+            "from": "\(year)-\(month)-\(day)",
+            "apiKey": apiKey
+        ].map(URLQueryItem.init)
 
-            var copy = (components.queryItems ?? [])
-
-            copy.append(.init(name: "q", value: inputQuery))
-            copy.append(.init(name: "from", value: "\(year)-\(month)-\(day)"))
-            copy.append(.init(name: "apiKey", value: apiKey))
-
-            components.queryItems = copy
-
-
-            return components.url!
-        }()
-
-        client.get(from: URLRequest(url: url)) { data, response, error in
-
-            if let error = error {
-                completion(.failure(error))
-            }
-
-            if let data = data, let response = response as? HTTPURLResponse, (200..<299).contains(response.statusCode) {
-
-                if let decodedObject = try? JSONDecoder().decode(NewsRoot.self, from: data) {
-                    completion(.success(decodedObject))
-                }
-            }
-        }
+        return components.url
     }
 }
+
+
 
 protocol HTTPClient {
     typealias RawResponse = (Data?, URLResponse?, Error?)
@@ -226,13 +254,14 @@ final class HTTPClientImpl: HTTPClient {
         self.urlSession = urlSessionProtocol
     }
 
-    func get(from request: URLRequest, rawResponse: @escaping (RawResponse)-> Void) {
-
-        urlSession.dataTask(with: request) { _, _, _ in
-
-        }.resume()
+    func get(
+        from request: URLRequest,
+        rawResponse: @escaping (RawResponse)-> Void
+    ) {
+        urlSession
+            .dataTask(with: request) { rawResponse(($0, $1, $2)) }
+            .resume()
     }
-
 }
 
 let teslaNewsStub = """
