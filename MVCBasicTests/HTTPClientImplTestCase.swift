@@ -37,72 +37,47 @@ class HTTPClientImplTestCase: XCTestCase {
     func test_get_withAnyResponseOnce_shouldPropagateResponse() throws {
         // GIVEN
         let (sut, spy) = makeSUT()
-        var capturedResponses: [(Data?, URLResponse?, Error?)] = []
-
-        sut.get(from: anyURLRequest()) { capturedResponses.append($0) }
 
 
         let completeData = anyData()
         let completeResponse = anyResponse()
         let completeError = anyNSError()
 
+        // WHEN, THEN
 
-        // WHEN
-        spy.completeWith(
-            data: completeData,
-            response: completeResponse,
-            error: completeError
+
+        let expected = (completeData, completeResponse, completeError)
+
+        expect(
+            sut,
+            toPropagateResponse: expected,
+            when: spy.completeWith(response: expected)
         )
-
-        // THEN
-        XCTAssertEqual(capturedResponses.count, 1)
-
-        let actualResponse = try XCTUnwrap(capturedResponses.first)
-        XCTAssertEqual(actualResponse.0, completeData)
-        XCTAssertEqual(actualResponse.1, completeResponse)
-        XCTAssertEqual(actualResponse.2 as NSError?, completeError)
     }
 
     func test_get_withAnyResponseTwice_shouldPropagateResponseTwice() throws {
         // GIVEN
         let (sut, spy) = makeSUT()
-        var capturedResponses: [(Data?, URLResponse?, Error?)] = []
-
-        sut.get(from: anyURLRequest()) { capturedResponses.append($0) }
-
-        // WHEN
         let firstData = anyData()
         let firstResponse = anyResponse()
         let firstError = anyNSError()
-
-        spy.completeWith(
-            data: firstData,
-            response: firstResponse,
-            error: firstError
-        )
 
         let secondData = anyData()
         let secondResponse = anyResponse()
         let secondError = anyNSError()
 
-        spy.completeWith(
-            data: secondData,
-            response: secondResponse,
-            error: secondError
+        let responses: [(Data?, URLResponse?, NSError?)] = [
+            (firstData, firstResponse, firstError),
+            (secondData, secondResponse, secondError),
+        ]
+
+
+        // WHEN
+        expect(
+            sut,
+            toPropagate: responses,
+            when: responses.forEach { spy.completeWith(response: $0) }
         )
-
-        // THEN
-        XCTAssertEqual(capturedResponses.count, 2)
-
-        let first = capturedResponses[0]
-        XCTAssertEqual(first.0, firstData)
-        XCTAssertEqual(first.1, firstResponse)
-        XCTAssertEqual(first.2 as NSError?, firstError)
-
-        let second = capturedResponses[1]
-        XCTAssertEqual(second.0, secondData)
-        XCTAssertEqual(second.1, secondResponse)
-        XCTAssertEqual(second.2 as NSError?, secondError)
     }
 
 
@@ -120,6 +95,51 @@ class HTTPClientImplTestCase: XCTestCase {
 
     func anyNSError() -> NSError {
         .init(domain: anyString(), code: 8383, userInfo: nil)
+    }
+
+    func expect(
+        _ sut: HTTPClient,
+        toPropagateResponse expected: (Data?, URLResponse?, NSError?),
+        when block: @autoclosure () -> Void,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+
+        var actualResponses: [(Data?, URLResponse?, Error?)] = []
+
+        sut.get(from: anyURLRequest()) { actualResponses.append($0) }
+
+        block()
+
+        XCTAssertEqual(actualResponses.count, 1, file: file, line: line)
+
+        let actualResponse = actualResponses.first
+        XCTAssertEqual(actualResponse?.0, expected.0, file: file, line: line)
+        XCTAssertEqual(actualResponse?.1, expected.1, file: file, line: line)
+        XCTAssertEqual(actualResponse?.2 as NSError?, expected.2, file: file, line: line)
+    }
+
+    func expect(
+        _ sut: HTTPClient,
+        toPropagate responses: [(Data?, URLResponse?, NSError?)],
+        when block: @autoclosure () -> Void,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        var actual: [(Data?, URLResponse?, Error?)] = []
+
+        sut.get(from: anyURLRequest()) { actual.append($0) }
+
+        block()
+
+        XCTAssertEqual(actual.count, responses.count, "Jian has a big ass", file: file, line: line)
+
+        zip(actual, responses).forEach { currentActual, currentExpected in
+
+            XCTAssertEqual(currentActual.0, currentExpected.0, file: file, line: line)
+            XCTAssertEqual(currentActual.1, currentExpected.1, file: file, line: line)
+            XCTAssertEqual(currentActual.2 as NSError?, currentExpected.2, file: file, line: line)
+        }
     }
 }
 
@@ -139,13 +159,10 @@ final class URLSessionProtocolSpy: URLSessionProtocol {
 
     private var returnStub: Stub = .init(dataTask: FakeURLSessionDataTask())
 
-    func completeWith(
-        data: Data?,
-        response: URLResponse?,
-        error: Error?, at index: Int = 0
+    func completeWith(response: (Data?, URLResponse?, Error?), at index: Int = 0
     ) {
 
-        calledDataTasks[index].completionHandler(data, response, error)
+        calledDataTasks[index].completionHandler(response.0, response.1, response.2)
     }
 
 
@@ -153,7 +170,7 @@ final class URLSessionProtocolSpy: URLSessionProtocol {
         self.returnStub = Stub(dataTask: dataTask)
     }
 
-    func dataTask(with request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> URLSessionDataTaskProtocol {
+    func dataTaskk(with request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> URLSessionDataTaskProtocol {
 
         calledDataTasks.append(.init(
             request: request,

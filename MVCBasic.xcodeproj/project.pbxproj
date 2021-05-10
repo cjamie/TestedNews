@@ -17,6 +17,10 @@
 		B2337D95263E335E000CA064 /* MVCBasicUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2337D94263E335E000CA064 /* MVCBasicUITests.swift */; };
 		B2337DA7263E3398000CA064 /* ViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2337DA6263E3398000CA064 /* ViewControllerTests.swift */; };
 		B2337DB9263E494B000CA064 /* TeslaNewsStub.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2337DB8263E494B000CA064 /* TeslaNewsStub.swift */; };
+		B282E1AF2647A15500C75F66 /* NewsRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B282E1AE2647A15500C75F66 /* NewsRoot.swift */; };
+		B282E1B82647A18600C75F66 /* ViewControllerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B282E1B72647A18600C75F66 /* ViewControllerViewModel.swift */; };
+		B282E1BE2647A1B600C75F66 /* HTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B282E1BD2647A1B600C75F66 /* HTTPClient.swift */; };
+		B282E1DA2648C34400C75F66 /* UITableViewCellExtensionTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B282E1D92648C34400C75F66 /* UITableViewCellExtensionTestCase.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +57,10 @@
 		B2337D96263E335E000CA064 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2337DA6263E3398000CA064 /* ViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerTests.swift; sourceTree = "<group>"; };
 		B2337DB8263E494B000CA064 /* TeslaNewsStub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeslaNewsStub.swift; sourceTree = "<group>"; };
+		B282E1AE2647A15500C75F66 /* NewsRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsRoot.swift; sourceTree = "<group>"; };
+		B282E1B72647A18600C75F66 /* ViewControllerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerViewModel.swift; sourceTree = "<group>"; };
+		B282E1BD2647A1B600C75F66 /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
+		B282E1D92648C34400C75F66 /* UITableViewCellExtensionTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITableViewCellExtensionTestCase.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +111,9 @@
 		B2337D71263E335A000CA064 /* MVCBasic */ = {
 			isa = PBXGroup;
 			children = (
+				B282E1BC2647A1AE00C75F66 /* Networking */,
+				B282E1B62647A17E00C75F66 /* ViewModel */,
+				B282E1AD2647A14200C75F66 /* Models */,
 				B2337D72263E335A000CA064 /* AppDelegate.swift */,
 				B2337D74263E335A000CA064 /* SceneDelegate.swift */,
 				B2337D76263E335A000CA064 /* ViewController.swift */,
@@ -117,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				B2337D89263E335E000CA064 /* MVCBasicTests.swift */,
+				B282E1D92648C34400C75F66 /* UITableViewCellExtensionTestCase.swift */,
 				B2337D8B263E335E000CA064 /* Info.plist */,
 				B2337DA6263E3398000CA064 /* ViewControllerTests.swift */,
 				B202F2C0263F5B2A00F4BB09 /* HTTPClientImplTestCase.swift */,
@@ -132,6 +144,30 @@
 				B2337D96263E335E000CA064 /* Info.plist */,
 			);
 			path = MVCBasicUITests;
+			sourceTree = "<group>";
+		};
+		B282E1AD2647A14200C75F66 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B282E1AE2647A15500C75F66 /* NewsRoot.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B282E1B62647A17E00C75F66 /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				B282E1B72647A18600C75F66 /* ViewControllerViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		B282E1BC2647A1AE00C75F66 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				B282E1BD2647A1B600C75F66 /* HTTPClient.swift */,
+			);
+			path = Networking;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -265,6 +301,9 @@
 			files = (
 				B2337D77263E335A000CA064 /* ViewController.swift in Sources */,
 				B2337D73263E335A000CA064 /* AppDelegate.swift in Sources */,
+				B282E1BE2647A1B600C75F66 /* HTTPClient.swift in Sources */,
+				B282E1B82647A18600C75F66 /* ViewControllerViewModel.swift in Sources */,
+				B282E1AF2647A15500C75F66 /* NewsRoot.swift in Sources */,
 				B2337D75263E335A000CA064 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -275,6 +314,7 @@
 			files = (
 				B202F2C1263F5B2A00F4BB09 /* HTTPClientImplTestCase.swift in Sources */,
 				B2337DA7263E3398000CA064 /* ViewControllerTests.swift in Sources */,
+				B282E1DA2648C34400C75F66 /* UITableViewCellExtensionTestCase.swift in Sources */,
 				B2337D8A263E335E000CA064 /* MVCBasicTests.swift in Sources */,
 				B2337DB9263E494B000CA064 /* TeslaNewsStub.swift in Sources */,
 			);

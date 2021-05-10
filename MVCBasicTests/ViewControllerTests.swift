@@ -20,7 +20,6 @@ class ViewControllerTests: XCTestCase {
         sut.loadViewIfNeeded()
 
         // THEN
-
         XCTAssertEqual(spy.calledRequestNews.count, 1)
     }
 
@@ -33,7 +32,7 @@ class ViewControllerTests: XCTestCase {
         // WHEN
         spy.completeWithSuccess(object: successValue)
 
-
+        // THEN
         XCTAssertEqual(sut.statusLabel.text, successValue.status)
     }
 
@@ -43,23 +42,106 @@ class ViewControllerTests: XCTestCase {
         sut.loadViewIfNeeded()
 
         // WHEN
-        spy.completeWithError()
+        spy.completeWithFailure()
 
-
+        // THEN
         XCTAssertEqual(sut.statusLabel.text, "Failed to retrieve news")
     }
 
-
-    func test_viewDidLoad_shouldAddStatusLabelToViewHierarchy() {
-        // GIVEN
+    func test_tableView_shouldHaveItsDelegateSetAfterViewDidLoad() {
         let (sut, _) = makeSUT()
 
-        // WHEN
         sut.loadViewIfNeeded()
 
-        // THEN
-        XCTAssert(sut.view.subviews.contains(sut.statusLabel))
+        XCTAssertNotNil(sut.tableView.delegate)
+        XCTAssertNotNil(sut.tableView.dataSource)
     }
+
+    func test_tableView_shouldHaveExpectedNumberOfRowsInSection_whenViewModelCompletesSuccessfullyWithUpdatedArticles() {
+        let (sut, spy) = makeSUT()
+        let articleCount = 9
+        let updatedArticles = (0..<articleCount).map { _ in makeArticle() }
+
+        sut.loadViewIfNeeded()
+
+        spy.completeWithSuccess(
+            object: anyNewRoot(articles: updatedArticles)
+        )
+
+        expect(numberOfRowsInSectionsFor: sut.tableView, toBe: articleCount)
+    }
+
+
+    func test_tableView_shouldHaveNoRowsInSection0_whenViewModelCompletesWithFailure() {
+        let (sut, spy) = makeSUT()
+        sut.loadViewIfNeeded()
+
+        spy.completeWithFailure()
+
+        expect(numberOfRowsInSectionsFor: sut.tableView, toBe: 0)
+    }
+
+    func test_tableView_whenViewModelCompletesSuccessfullyWithUpdatedArticles_shouldHaveExpectedSourceTextInLabels() {
+
+        let (sut, spy) = makeSUT()
+        sut.loadViewIfNeeded()
+
+        let sources = [
+            Source(id: "first ID", name: "first name"),
+            Source(id: "second ID", name: "second name"),
+        ]
+        print("-=- completeWithSuccess")
+        spy.completeWithSuccess(
+            object: anyNewRoot(articles: sources.map(toAnyArticle))
+        )
+
+
+//        expect(numberOfRowsInSectionsFor: sut.tableView, toBe: 2)
+
+
+        let firstExpected = "SourceId: \(sources[0].id ?? "null") SourceName: \(sources[0].name)"
+
+        let firstCell = sut.tableView.cellForRow(at: .init(row: 0, section: 0))
+        XCTAssertEqual(
+            firstCell?.textLabel?.text,
+            firstExpected
+        )
+
+        let secondCell = sut.tableView.cellForRow(at: .init(row: 1, section: 0))
+        XCTAssertNotNil(secondCell)
+
+//
+//        let secondExpected = "SourceId: \(sources[1].id ?? "") SourceName: \(sources[1].name)"
+//        XCTAssertEqual(
+//            sut.tableView.cellForRow(at: .init(row: 1, section: 0))?.textLabel?.text,
+//            secondExpected
+//        )
+
+
+
+
+    }
+
+
+    private func toAnyArticle(_ source: Source) -> Article {
+        .init(
+            source: source,
+            author: anyString(),
+            title: anyString(),
+            articleDescription: anyString(),
+            url: anyURL(),
+            urlToImage: anyURL(),
+            content: anyString())
+    }
+
+    private func anyNewRoot(articles: [Article]) -> NewsRoot {
+        .init(
+            status: anyString(),
+            totalResults: anyInt(),
+            articles: articles
+        )
+    }
+
 
 
     private func makeSUT() -> (ViewController, ViewControllerViewModelSpy) {
@@ -69,6 +151,34 @@ class ViewControllerTests: XCTestCase {
         return (sut, spy)
     }
 
+    private func makeArticle() ->  Article {
+        .init(
+            source: .init(id: anyString(), name: anyString()),
+            author: anyString(),
+            title: anyString(),
+            articleDescription: anyString(),
+            url: anyURL(),
+            urlToImage: anyURL(),
+            content: anyString()
+        )
+    }
+
+    private func expect(
+        numberOfRowsInSectionsFor tableview: UITableView,
+        toBe expected: Int,
+        at section: Int = 0,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(
+            tableview.dataSource?.tableView(tableview, numberOfRowsInSection: section),
+            expected,
+            file: file,
+            line: line
+        )
+    }
+
+
     private final class ViewControllerViewModelSpy: ViewControllerViewModel {
         private(set) var calledRequestNews: [NewsRootCompletion] = []
 
@@ -76,11 +186,21 @@ class ViewControllerTests: XCTestCase {
             calledRequestNews.append(completion)
         }
 
-        func completeWithSuccess(object: NewsRoot = expectedNewsRoot(), at index: Int = 0) {
+        func completeWithSuccess(
+            object: NewsRoot = expectedNewsRoot(),
+            at index: Int = 0,
+            file: StaticString = #filePath,
+            line: UInt = #line
+        ) {
+            guard calledRequestNews.count != 0 else {
+                XCTFail("calledRequestNews is empty dude", file: file, line: line)
+                return
+            }
+
             calledRequestNews[index](.success(object))
         }
 
-        func completeWithError(at index: Int = 0) {
+        func completeWithFailure(at index: Int = 0) {
             calledRequestNews[index](.failure(anyError()))
         }
     }
@@ -223,7 +343,6 @@ class ViewControllerViewModelImplTests: XCTestCase {
         sut = nil
         client.completeWithResponse(error: anyError())
 
-
         // THEN
 
         XCTAssertEqual(captureCount, 0)
@@ -335,38 +454,6 @@ class DecodingTests: XCTestCase {
 
 }
 
-final class HTTPClientSpy: HTTPClient {
-
-    private(set) var calledGet: [Get] = []
-
-    struct Get: Equatable {
-        let request: URLRequest
-        let rawResponse: (RawResponse) -> Void
-
-        // MARK: - Equatable
-
-        static func == (lhs: Get, rhs: Get) -> Bool {
-            lhs.request == rhs.request
-        }
-    }
-
-    func get(from request: URLRequest, rawResponse: @escaping (RawResponse)-> Void) {
-        calledGet.append(.init(request: request, rawResponse: rawResponse))
-    }
-
-
-    func completeWithResponse(
-        data: Data? = nil,
-        response: URLResponse? = nil,
-        error: Error? = nil,
-        at index: Int = 0
-    ) {
-        let rawResponse = HTTPClient.RawResponse(data, response, error)
-
-        calledGet.map { $0.rawResponse }[index](rawResponse)
-    }
-
-}
 func expectedNewsRoot() -> NewsRoot {
     .init(
         status: "ok",
@@ -439,4 +526,8 @@ func anyString(_ length: Int = 10) -> String {
 
 func anyURL() -> URL {
     URL(string: "https://example.com")!
+}
+
+func anyInt(from: Int = 0, to: Int = 100) -> Int {
+    (from..<to).randomElement() ?? 100
 }
